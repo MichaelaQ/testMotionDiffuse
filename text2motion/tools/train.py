@@ -45,7 +45,8 @@ if __name__ == '__main__':
         dist.barrier()
 
     if opt.dataset_name == 't2m':
-        opt.data_root = './data/HumanML3D'
+        # opt.data_root = './data/HumanML3D'
+        opt.data_root = '/media/michaela/DATA1/GitHub/mdm/dataset/HumanML3D'
         opt.motion_dir = pjoin(opt.data_root, 'new_joint_vecs')
         opt.text_dir = pjoin(opt.data_root, 'texts')
         opt.joints_num = 22
@@ -55,7 +56,8 @@ if __name__ == '__main__':
         dim_pose = 263
         kinematic_chain = paramUtil.t2m_kinematic_chain
     elif opt.dataset_name == 'kit':
-        opt.data_root = './data/KIT-ML'
+        # opt.data_root = './data/KIT-ML'
+        opt.data_root = '/media/michaela/DATA1/GitHub/KIT-ML'
         opt.motion_dir = pjoin(opt.data_root, 'new_joint_vecs')
         opt.text_dir = pjoin(opt.data_root, 'texts')
         opt.joints_num = 21

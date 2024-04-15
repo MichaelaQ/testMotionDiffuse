@@ -52,7 +52,8 @@ if __name__ == '__main__':
 
     assert opt.dataset_name == "t2m"
     assert args.motion_length <= 196
-    opt.data_root = './dataset/HumanML3D'
+    # opt.data_root = './dataset/HumanML3D'
+    opt.data_root = '/media/michaela/DATA1/GitHub/mdm/dataset/HumanML3D'
     opt.motion_dir = pjoin(opt.data_root, 'new_joint_vecs')
     opt.text_dir = pjoin(opt.data_root, 'texts')
     opt.joints_num = 22
