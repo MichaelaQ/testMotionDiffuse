@@ -1,0 +1,28 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "visualization",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                // " --opt_path","'/media/michaela/DATA1/GitHub/MotionDiffuse/testMotionDiffuse/text2motion/checkpoints/t2m/t2m_motiondiffuse/opt.txt'",
+                "--text","'a person is jumping'",
+                "--motion_length","60",
+                "--result_path","'test_sample.gif'"
+                "--npy_path","'test_sample.npy'",
+                "--gpu_id","0"
+                
+            ],
+            "python": "/home/michaela/anaconda3/envs/motiondiffuse/bin/python"
+    ]
+}

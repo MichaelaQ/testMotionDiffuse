@@ -34,7 +34,8 @@ conda install pytorch={torch_version} torchvision cudatoolkit={cu_version} -c py
 E.g., install PyTorch 1.7.1 & CUDA 10.1.
 ```shell
 conda install pytorch=1.7.1 torchvision cudatoolkit=10.1 -c pytorch
-conda install pytorch==1.9.0 torchvision==0.10.0 torchaudio==0.9.0 cudatoolkit=10.2 -c pytorch
+conda install pytorch==1.8.0 torchvision==0.9.0 torchaudio==0.8.0 cudatoolkit=11.1 -c pytorch -c conda-forge
+
 ```
 
 **Important:** Make sure that your compilation CUDA version and runtime CUDA version match.
@@ -60,7 +61,7 @@ Please replace `{cu_version}` and `{torch_version}` in the url to your desired o
 For example, to install mmcv-full with CUDA 10.1 and PyTorch 1.7.1, use the following command:
 ```shell
 pip install "mmcv-full>=1.3.17,<=1.5.3" -f https://download.openmmlab.com/mmcv/dist/cu101/torch1.7.1/index.html
-pip install "mmcv-full>=1.3.17,<=1.5.3" -f https://download.openmmlab.com/mmcv/dist/cu102/torch1.9.0/index.html
+pip install "mmcv-full>=1.3.17,<=1.5.3" -f https://download.openmmlab.com/mmcv/dist/cu111/torch1.8/index.html
 ```
 
 See [here](https://mmcv.readthedocs.io/en/latest/get_started/installation.html) for different versions of MMCV compatible to different PyTorch and CUDA versions.
