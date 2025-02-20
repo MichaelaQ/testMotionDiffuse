@@ -1,16 +1,16 @@
 from datetime import datetime
 import numpy as np
 import torch
-from datasets import get_dataset_motion_loader, get_motion_loader
-from models import MotionTransformer
-from utils.get_opt import get_opt
-from utils.metrics import *
-from datasets import EvaluatorModelWrapper
+from text2motion.datasets import get_dataset_motion_loader, get_motion_loader
+from text2motion.models import MotionTransformer
+from text2motion.utils.get_opt import get_opt
+from text2motion.utils.metrics import *
+from text2motion.datasets import EvaluatorModelWrapper
 from collections import OrderedDict
-from utils.plot_script import *
-from utils import paramUtil
-from utils.utils import *
-from trainers import DDPMTrainer
+from text2motion.utils.plot_script import *
+from text2motion.utils import paramUtil
+from text2motion.utils.utils import *
+from text2motion.trainers import DDPMTrainer
 
 from os.path import join as pjoin
 import sys
@@ -45,7 +45,7 @@ def evaluate_matching_score(motion_loaders, file):
         # print(motion_loader_name)
         with torch.no_grad():
             for idx, batch in enumerate(motion_loader):
-                word_embeddings, pos_one_hots, _, sent_lens, motions, m_lens, _ = batch
+                word_embeddings, pos_one_hots, _, sent_lens, motions, m_lens, _,_ = batch
                 text_embeddings, motion_embeddings = eval_wrapper.get_co_embeddings(
                     word_embs=word_embeddings,
                     pos_ohot=pos_one_hots,
@@ -90,7 +90,7 @@ def evaluate_fid(groundtruth_loader, activation_dict, file):
     print('========== Evaluating FID ==========')
     with torch.no_grad():
         for idx, batch in enumerate(groundtruth_loader):
-            _, _, _, sent_lens, motions, m_lens, _ = batch
+            _, _, _, sent_lens, motions, m_lens, _ ,_= batch
             motion_embeddings = eval_wrapper.get_motion_embeddings(
                 motions=motions,
                 m_lens=m_lens
@@ -112,6 +112,7 @@ def evaluate_fid(groundtruth_loader, activation_dict, file):
 
 def evaluate_diversity(activation_dict, file):
     eval_dict = OrderedDict({})
+    diversity_times = 30
     print('========== Evaluating Diversity ==========')
     for model_name, motion_embeddings in activation_dict.items():
         diversity = calculate_diversity(motion_embeddings, diversity_times)
@@ -143,6 +144,43 @@ def evaluate_multimodality(mm_motion_loaders, file):
     return eval_dict
 
 
+def evaluate_sk(motion_loaders,file):
+    skating_ratio_dict = OrderedDict({})
+    motion_loader_name = 'vald'
+    motion_loader = motion_loaders[motion_loader_name]
+    print('========== Evaluating skate_ratio ==========')
+    skate_ratio_sum = 0
+    all_size = 0
+    with torch.no_grad():
+        for idx, batch in enumerate(motion_loader):
+            word_embeddings, pos_one_hots, _, sent_lens, motions, m_lens, _,_= batch
+            # process motion
+            # sample to motion
+            mean_for_eval = motion_loader.dataset.dataloader.dataset.mean_for_eval
+            std_for_eval = motion_loader.dataset.dataloader.dataset.std_for_eval
+            motions = motions * std_for_eval + mean_for_eval
+            motions = motions.float()
+            n_joints = 22 if motions.shape[-1] == 263 else 21
+            motions = recover_from_ric(motions, n_joints)
+            if n_joints == 21:
+                # kit
+                motions = motions * 0.001
+            
+            # foot skating error
+            if n_joints == 21:
+                skate_ratio, skate_vel = calculate_skating_ratio_kit(motions.permute(0, 2, 3, 1))  # [batch_size]
+            else:
+                skate_ratio, skate_vel = calculate_skating_ratio(motions.permute(0, 2, 3, 1))  # [batch_size]
+            skate_ratio_sum += skate_ratio.sum()
+            all_size += motions.shape[0]
+        skating_score = skate_ratio_sum / all_size
+        skating_ratio_dict[motion_loader_name] = skating_score
+
+    print(f'---> [{motion_loader_name}] Skating Ratio: {skating_score:.4f}')
+    print(f'---> [{motion_loader_name}] Skating Ratio: {skating_score:.4f}', file=file, flush=True)
+    return skating_ratio_dict
+
+
 def get_metric_statistics(values):
     mean = np.mean(values, axis=0)
     std = np.std(values, axis=0)
@@ -150,13 +188,13 @@ def get_metric_statistics(values):
     return mean, conf_interval
 
 
-def evaluation(log_file):
+def evaluation(log_file, eval_motion_loaders):
     with open(log_file, 'w') as f:
         all_metrics = OrderedDict({'Matching Score': OrderedDict({}),
                                    'R_precision': OrderedDict({}),
                                    'FID': OrderedDict({}),
                                    'Diversity': OrderedDict({}),
-                                   'MultiModality': OrderedDict({})})
+                                   'Skating Ratio': OrderedDict({})})
         for replication in range(replication_times):
             motion_loaders = {}
             mm_motion_loaders = {}
@@ -180,9 +218,9 @@ def evaluation(log_file):
             print(f'Time: {datetime.now()}', file=f, flush=True)
             div_score_dict = evaluate_diversity(acti_dict, f)
 
-            print(f'Time: {datetime.now()}')
-            print(f'Time: {datetime.now()}', file=f, flush=True)
-            mm_score_dict = evaluate_multimodality(mm_motion_loaders, f)
+            # print(f'Time: {datetime.now()}')
+            # print(f'Time: {datetime.now()}', file=f, flush=True)
+            # skating_ratio_dict = evaluate_sk(motion_loaders, f)
 
             print(f'!!! DONE !!!')
             print(f'!!! DONE !!!', file=f, flush=True)
@@ -211,11 +249,11 @@ def evaluation(log_file):
                 else:
                     all_metrics['Diversity'][key] += [item]
 
-            for key, item in mm_score_dict.items():
-                if key not in all_metrics['MultiModality']:
-                    all_metrics['MultiModality'][key] = [item]
-                else:
-                    all_metrics['MultiModality'][key] += [item]
+            # for key, item in skating_ratio_dict.items():
+            #     if key not in all_metrics['Skating Ratio']:
+            #         all_metrics['Skating Ratio'][key] = [item]
+            #     else:
+            #         all_metrics['Skating Ratio'][key] += [item]
 
 
         # print(all_metrics['Diversity'])
@@ -243,7 +281,7 @@ if __name__ == '__main__':
     mm_num_repeats = 30
     mm_num_times = 10
 
-    diversity_times = 300
+    diversity_times = 30
     replication_times = 1
     batch_size = 32
     opt_path = sys.argv[1]
@@ -275,4 +313,4 @@ if __name__ == '__main__':
     }
 
     log_file = './t2m_evaluation.log'
-    evaluation(log_file)
+    evaluation(log_file,eval_motion_loaders)

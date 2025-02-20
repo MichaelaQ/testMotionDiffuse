@@ -341,6 +341,7 @@ class MotionTransformer(nn.Module):
 
         # Input Embedding
         self.joint_embed = nn.Linear(self.input_feats, self.latent_dim)
+        self.p_embed = nn.Linear(5, self.latent_dim)
 
         self.time_embed = nn.Sequential(
             nn.Linear(self.latent_dim, self.time_embed_dim),
@@ -404,10 +405,11 @@ class MotionTransformer(nn.Module):
                 src_mask[i, j] = 0
         return src_mask
 
-    def forward(self, x, timesteps, length=None, text=None, xf_proj=None, xf_out=None):
+    def forward(self, x, timesteps, length=None, text=None, xf_proj=None, xf_out=None , OCEAN = None):
         """
         x: B, T, D
         """
+        OCEAN = torch.tensor(OCEAN,dtype=torch.float32).to(x.device)
         B, T = x.shape[0], x.shape[1]
         if text is not None and len(text) != B:
             index = x.device.index
@@ -419,7 +421,8 @@ class MotionTransformer(nn.Module):
 
         # B, T, latent_dim
         h = self.joint_embed(x)
-        h = h + self.sequence_embedding.unsqueeze(0)[:, :T, :]
+        p = self.p_embed(OCEAN)
+        h = h + self.sequence_embedding.unsqueeze(0)[:, :T, :] + p
 
         src_mask = self.generate_src_mask(T, length).to(x.device).unsqueeze(-1)
         for module in self.temporal_decoder_blocks:

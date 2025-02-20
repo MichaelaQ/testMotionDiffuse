@@ -1,7 +1,7 @@
 import argparse
 import os
 import torch
-from mmcv.runner import init_dist, get_dist_info
+from mmengine.dist.utils import init_dist, get_dist_info
 import torch.distributed as dist
 
 
@@ -14,12 +14,12 @@ class BaseOptions():
         self.parser.add_argument('--name', type=str, default="test", help='Name of this trial')
         self.parser.add_argument('--decomp_name', type=str, default="Decomp_SP001_SM001_H512", help='Name of autoencoder model')
 
-        self.parser.add_argument("--gpu_id", type=int, nargs='+', default=(-1), help='GPU id')
+        self.parser.add_argument("--gpu_id", type=int, nargs='+', default=(0), help='GPU id')
         self.parser.add_argument("--distributed", action="store_true", help='Whether to use DDP training')
         self.parser.add_argument("--data_parallel", action="store_true", help="Whether to use DP training")
 
         self.parser.add_argument('--dataset_name', type=str, default='t2m', help='Dataset Name')
-        self.parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
+        self.parser.add_argument('--checkpoints_dir', type=str, default='./text2motion/checkpoints', help='models are saved here')
 
         self.parser.add_argument("--unit_length", type=int, default=4, help="Motions are cropped to the maximum times of unit_length")
         self.parser.add_argument("--max_text_len", type=int, default=20, help="Maximum length of text description")

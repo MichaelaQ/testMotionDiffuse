@@ -1,7 +1,7 @@
 import torch
-from utils.word_vectorizer import WordVectorizer, POS_enumerator
-from utils.get_opt import get_opt
-from models import MotionTransformer
+from text2motion.utils.word_vectorizer import WordVectorizer, POS_enumerator
+from text2motion.utils.get_opt import get_opt
+from text2motion.models import MotionTransformer
 from torch.utils.data import Dataset, DataLoader
 from os.path import join as pjoin
 from tqdm import tqdm
@@ -10,6 +10,7 @@ from .evaluator_models import *
 import os
 import codecs as cs
 import random
+import re
 from torch.utils.data._utils.collate import default_collate
 
 
@@ -34,11 +35,13 @@ class EvaluationDataset(Dataset):
         mm_idxs = np.sort(mm_idxs)
         all_caption = []
         all_m_lens = []
+        all_OCEAN = []
         all_data = []
         with torch.no_grad():
             for i, data in tqdm(enumerate(dataloader)):
-                word_emb, pos_ohot, caption, cap_lens, motions, m_lens, tokens = data
+                word_emb, pos_ohot, caption, cap_lens, motions, m_lens, tokens,OCEAN = data
                 all_data.append(data)
+                
                 tokens = tokens[0].split('_')
                 mm_num_now = len(mm_generated_motions)
                 is_mm = True if ((mm_num_now < mm_num_samples) and (i == mm_idxs[mm_num_now])) else False
@@ -51,21 +54,22 @@ class EvaluationDataset(Dataset):
                     m_lens = m_lens.to(opt.device)
                 for t in range(repeat_times):
                     all_m_lens.append(m_lens)
+                    all_OCEAN.append(OCEAN)
                     all_caption.extend(caption)
                 if is_mm:
                     mm_generated_motions.append(0)
         all_m_lens = torch.stack(all_m_lens)
-        
+        all_OCEAN = torch.stack(all_OCEAN).squeeze(1)
         # Generate all sequences
         with torch.no_grad():
-            all_pred_motions = trainer.generate(all_caption, all_m_lens, opt.dim_pose)
+            all_pred_motions = trainer.generate(all_caption, all_m_lens, all_OCEAN,opt.dim_pose)
         
         cur_idx = 0
         mm_generated_motions = []
         with torch.no_grad():
             for i, data_dummy in tqdm(enumerate(dataloader)):
                 data = all_data[i]
-                word_emb, pos_ohot, caption, cap_lens, motions, m_lens, tokens = data
+                word_emb, pos_ohot, caption, cap_lens, motions, m_lens, tokens,OCEAN = data
                 tokens = tokens[0].split('_')
                 mm_num_now = len(mm_generated_motions)
                 is_mm = True if ((mm_num_now < mm_num_samples) and (i == mm_idxs[mm_num_now])) else False
@@ -87,7 +91,8 @@ class EvaluationDataset(Dataset):
                                     'length': pred_motions.shape[0],
                                     'caption': caption[0],
                                     'cap_len': cap_lens[0].item(),
-                                    'tokens': tokens}
+                                    'tokens': tokens,
+                                    'OCEAN':OCEAN}
                         generated_motion.append(sub_dict)
 
                     if is_mm:
@@ -112,7 +117,7 @@ class EvaluationDataset(Dataset):
 
     def __getitem__(self, item):
         data = self.generated_motion[item]
-        motion, m_length, caption, tokens = data['motion'], data['length'], data['caption'], data['tokens']
+        motion, m_length, caption, tokens,OCEAN = data['motion'], data['length'], data['caption'], data['tokens'],data['OCEAN']
         sent_len = data['cap_len']
         pos_one_hots = []
         word_embeddings = []
@@ -127,7 +132,7 @@ class EvaluationDataset(Dataset):
             motion = np.concatenate([motion,
                                      np.zeros((self.opt.max_motion_length - m_length, motion.shape[1]))
                                      ], axis=0)
-        return word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, '_'.join(tokens)
+        return word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, '_'.join(tokens),OCEAN
 
 
 def collate_fn(batch):
@@ -147,6 +152,7 @@ class Text2MotionDatasetV2(Dataset):
 
         data_dict = {}
         id_list = []
+        ocean = np.load(pjoin(opt.data_root, 'binarized_big_five.npy'))
         with cs.open(split_file, 'r') as f:
             for line in f.readlines():
                 id_list.append(line.strip())
@@ -195,9 +201,22 @@ class Text2MotionDatasetV2(Dataset):
                                 # break
 
                 if flag:
+                    gNumber = re.search(r'G(\d+)', name).group(1)
+                    pNumber = re.search(r'P(\d+)', name).group(1)
+                    oceanID = (int(gNumber)-1)*2 + int(pNumber) - 1
+                    O = ocean[oceanID][0]
+                    C = ocean[oceanID][1]
+                    E = ocean[oceanID][2]
+                    A = ocean[oceanID][3]
+                    N = ocean[oceanID][4]
                     data_dict[name] = {'motion': motion,
                                        'length': len(motion),
-                                       'text': text_data}
+                                       'text':text_data,
+                                       'O':O,
+                                       'C':C,
+                                       'E':E,
+                                       'A':A,
+                                       'N':N}
                     new_name_list.append(name)
                     length_list.append(len(motion))
             except:
@@ -266,12 +285,15 @@ class Text2MotionDatasetV2(Dataset):
 
         "Z Normalization"
         motion = (motion - self.mean) / self.std
+        O,C,E,A,N = data['O'],data['C'],data['E'],data['A'],data['N']
+        ocean = np.stack([O, C, E, A, N])
+        OCEAN = np.tile(ocean, (196, 1))
 
         if m_length < self.max_motion_length:
             motion = np.concatenate([motion,
                                      np.zeros((self.max_motion_length - m_length, motion.shape[1]))
                                      ], axis=0)
-        return word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, '_'.join(tokens)
+        return word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, '_'.join(tokens),OCEAN
 
 
 def get_dataset_motion_loader(opt_path, batch_size, device):
@@ -284,7 +306,7 @@ def get_dataset_motion_loader(opt_path, batch_size, device):
         mean = np.load(pjoin(opt.meta_dir, 'mean.npy'))
         std = np.load(pjoin(opt.meta_dir, 'std.npy'))
 
-        w_vectorizer = WordVectorizer('./data/glove', 'our_vab')
+        w_vectorizer = WordVectorizer('text2motion/data/glove', 'our_vab')
         split_file = pjoin(opt.data_root, 'test.txt')
         dataset = Text2MotionDatasetV2(opt, mean, std, split_file, w_vectorizer)
         dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4, drop_last=True,
@@ -335,7 +357,7 @@ def get_motion_loader(opt, batch_size, trainer, ground_truth_dataset, mm_num_sam
 
     # Currently the configurations of two datasets are almost the same
     if opt.dataset_name == 't2m' or opt.dataset_name == 'kit':
-        w_vectorizer = WordVectorizer('./data/glove', 'our_vab')
+        w_vectorizer = WordVectorizer('text2motion/data/glove', 'our_vab')
     else:
         raise KeyError('Dataset not recognized!!')
     print('Generating %s ...' % opt.name)
@@ -364,7 +386,7 @@ def build_models(opt):
                                       output_size=opt.dim_coemb_hidden,
                                       device=opt.device)
 
-    checkpoint = torch.load(pjoin('data/pretrained_models', opt.dataset_name, 'text_mot_match', 'model', 'finest.tar'),
+    checkpoint = torch.load(pjoin('text2motion/data/pretrained_models', opt.dataset_name, 'text_mot_match', 'model', 'finest.tar'),
                             map_location=opt.device)
     movement_enc.load_state_dict(checkpoint['movement_encoder'])
     text_enc.load_state_dict(checkpoint['text_encoder'])

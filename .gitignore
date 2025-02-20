@@ -88,3 +88,4 @@ text2motion/utils/__pycache__/quaternion.cpython-37.pyc
 text2motion/utils/__pycache__/skeleton.cpython-37.pyc
 text2motion/utils/__pycache__/utils.cpython-37.pyc
 text2motion/utils/__pycache__/word_vectorizer.cpython-37.pyc
+text2motion/checkpoints/t2m

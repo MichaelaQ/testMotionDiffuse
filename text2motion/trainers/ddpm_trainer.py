@@ -2,19 +2,19 @@ import torch
 import torch.nn.functional as F
 import random
 import time
-from models.transformer import MotionTransformer
+from text2motion.models.transformer import MotionTransformer
 from torch.utils.data import DataLoader
 import torch.optim as optim
 from torch.nn.utils import clip_grad_norm_
 from collections import OrderedDict
-from utils.utils import print_current_loss
+from text2motion.utils.utils import print_current_loss
 from os.path import join as pjoin
 import codecs as cs
 import torch.distributed as dist
 
 
-from mmcv.runner import get_dist_info
-from models.gaussian_diffusion import (
+from mmengine.dist.utils import get_dist_info
+from text2motion.models.gaussian_diffusion import (
     GaussianDiffusion,
     get_named_beta_schedule,
     create_named_schedule_sampler,
@@ -23,7 +23,7 @@ from models.gaussian_diffusion import (
     LossType
 )
 
-from datasets import build_dataloader
+from text2motion.datasets import build_dataloader
 
 
 class DDPMTrainer(object):
@@ -65,7 +65,7 @@ class DDPMTrainer(object):
             opt.step()
 
     def forward(self, batch_data, eval_mode=False):
-        caption, motions, m_lens = batch_data
+        caption, motions, m_lens,OCEAN = batch_data
         motions = motions.detach().to(self.device).float()
 
         self.caption = caption
@@ -78,7 +78,7 @@ class DDPMTrainer(object):
             model=self.encoder,
             x_start=x_start,
             t=t,
-            model_kwargs={"text": caption, "length": cur_len}
+            model_kwargs={"text": caption, "length": cur_len,"OCEAN":OCEAN}
         )
 
         self.real_noise = output['target']
@@ -88,11 +88,11 @@ class DDPMTrainer(object):
         except:
             self.src_mask = self.encoder.generate_src_mask(T, cur_len).to(x_start.device)
 
-    def generate_batch(self, caption, m_lens, dim_pose):
+    def generate_batch(self, caption, m_lens, dim_pose,OCEAN):
         xf_proj, xf_out = self.encoder.encode_text(caption, self.device)
         
         B = len(caption)
-        T = min(m_lens.max(), self.encoder.num_frames)
+        T = max(m_lens.max(), self.encoder.num_frames)
         output = self.diffusion.p_sample_loop(
             self.encoder,
             (B, T, dim_pose),
@@ -101,11 +101,12 @@ class DDPMTrainer(object):
             model_kwargs={
                 'xf_proj': xf_proj,
                 'xf_out': xf_out,
-                'length': m_lens
+                'length': m_lens,
+                "OCEAN":OCEAN
             })
         return output
 
-    def generate(self, caption, m_lens, dim_pose, batch_size=1024):
+    def generate(self, caption, m_lens,OCEAN, dim_pose,batch_size=1024):
         N = len(caption)
         cur_idx = 0
         self.encoder.eval()
@@ -114,10 +115,12 @@ class DDPMTrainer(object):
             if cur_idx + batch_size >= N:
                 batch_caption = caption[cur_idx:]
                 batch_m_lens = m_lens[cur_idx:]
+                batch_OCEAN = OCEAN[cur_idx:]
             else:
                 batch_caption = caption[cur_idx: cur_idx + batch_size]
                 batch_m_lens = m_lens[cur_idx: cur_idx + batch_size]
-            output = self.generate_batch(batch_caption, batch_m_lens, dim_pose)
+                batch_OCEAN = OCEAN[cur_idx: cur_idx + batch_size]
+            output = self.generate_batch(batch_caption, batch_m_lens, dim_pose,batch_OCEAN)
             B = output.shape[0]
 
             for i in range(B):
@@ -168,9 +171,9 @@ class DDPMTrainer(object):
 
     def load(self, model_dir):
         checkpoint = torch.load(model_dir, map_location=self.device)
-        if self.opt.is_train:
-            self.opt_encoder.load_state_dict(checkpoint['opt_encoder'])
-        self.encoder.load_state_dict(checkpoint['encoder'], strict=True)
+        # if self.opt.is_train:
+            # self.opt_encoder.load_state_dict(checkpoint['encoder'])
+        self.encoder.load_state_dict(checkpoint['encoder'], strict=False)
         return checkpoint['ep'], checkpoint.get('total_it', 0)
 
     def train(self, train_dataset):
@@ -180,7 +183,7 @@ class DDPMTrainer(object):
         it = 0
         cur_epoch = 0
         if self.opt.is_continue:
-            model_dir = pjoin(self.opt.model_dir, 'latest.tar')
+            model_dir = pjoin('/sata/public/yyqi/testMotionDiffuse/text2motion/checkpoints/t2m/t2m_motiondiffuse/model', 'latest.tar')
             cur_epoch, it = self.load(model_dir)
 
         start_time = time.time()

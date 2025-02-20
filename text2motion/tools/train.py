@@ -1,16 +1,16 @@
 import os
 from os.path import join as pjoin
 
-import utils.paramUtil as paramUtil
-from options.train_options import TrainCompOptions
-from utils.plot_script import *
+import text2motion.utils.paramUtil as paramUtil
+from text2motion.options.train_options import TrainCompOptions
+from text2motion.utils.plot_script import *
 
-from models import MotionTransformer
-from trainers import DDPMTrainer
-from datasets import Text2MotionDataset
+from text2motion.models import MotionTransformer
+from text2motion.trainers import DDPMTrainer
+from text2motion.datasets.dataset import Text2MotionDatasetV2,Text2MotionDataset
 
-from mmcv.runner import get_dist_info, init_dist
-from mmcv.parallel import MMDistributedDataParallel, MMDataParallel
+from mmengine.dist.utils import get_dist_info, init_dist
+from mmengine.model import MMDistributedDataParallel#, MMDataParallel
 import torch
 import torch.distributed as dist
 
@@ -46,9 +46,9 @@ if __name__ == '__main__':
 
     if opt.dataset_name == 't2m':
         # opt.data_root = './data/HumanML3D'
-        opt.data_root = '/media/michaela/DATA1/GitHub/mdm/dataset/HumanML3D'
+        opt.data_root = '/sata/public/yyqi/Dataset/OCEAN'
         opt.motion_dir = pjoin(opt.data_root, 'new_joint_vecs')
-        opt.text_dir = pjoin(opt.data_root, 'texts')
+        opt.text_dir = pjoin(opt.data_root, 'processedText')
         opt.joints_num = 22
         radius = 4
         fps = 20

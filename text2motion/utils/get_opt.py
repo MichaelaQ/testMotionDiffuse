@@ -2,7 +2,7 @@ import os
 from argparse import Namespace
 import re
 from os.path import join as pjoin
-from utils.word_vectorizer import POS_enumerator
+from text2motion.utils.word_vectorizer import POS_enumerator
 
 
 def is_float(numStr):
@@ -66,15 +66,15 @@ def get_opt(opt_path, device):
 
     if opt.dataset_name == 't2m':
         # opt.data_root = './data/HumanML3D'
-        opt.data_root = '/media/michaela/DATA1/GitHub/mdm/dataset/HumanML3D'
+        opt.data_root = '/sata/public/yyqi/Dataset/OCEAN'
         opt.motion_dir = pjoin(opt.data_root, 'new_joint_vecs')
-        opt.text_dir = pjoin(opt.data_root, 'texts')
+        opt.text_dir = pjoin(opt.data_root, 'processedText')
         opt.joints_num = 22
         opt.dim_pose = 263
         opt.max_motion_length = 196
     elif opt.dataset_name == 'kit':
         # opt.data_root = './data/KIT-ML'
-        opr.data_root = '/media/michaela/DATA1/GitHub/KIT-ML'
+        opt.data_root = '/media/michaela/DATA1/GitHub/KIT-ML'
         opt.motion_dir = pjoin(opt.data_root, 'new_joint_vecs')
         opt.text_dir = pjoin(opt.data_root, 'texts')
         opt.joints_num = 21

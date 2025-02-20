@@ -1,0 +1,27 @@
+==================== Replication 0 ====================
+Time: 2025-02-19 22:03:34.647116
+---> [ground truth] Matching Score: 4.3743
+---> [ground truth] R_precision: (top 1): 0.2109 (top 2): 0.3672 (top 3): 0.4844 
+---> [text2motion] Matching Score: 9.2469
+---> [text2motion] R_precision: (top 1): 0.1109 (top 2): 0.2203 (top 3): 0.2484 
+Time: 2025-02-19 22:03:56.129060
+---> [ground truth] FID: 0.2358
+---> [text2motion] FID: 5.4670
+Time: 2025-02-19 22:03:59.830134
+---> [ground truth] Diversity: 5.9806
+---> [text2motion] Diversity: 5.0118
+!!! DONE !!!
+========== Matching Score Summary ==========
+---> [ground truth] Mean: 4.3743 CInterval: 0.0000
+---> [text2motion] Mean: 9.2469 CInterval: 0.0000
+========== R_precision Summary ==========
+---> [ground truth](top 1) Mean: 0.2109 CInt: 0.0000;(top 2) Mean: 0.3672 CInt: 0.0000;(top 3) Mean: 0.4844 CInt: 0.0000;
+---> [text2motion](top 1) Mean: 0.1109 CInt: 0.0000;(top 2) Mean: 0.2203 CInt: 0.0000;(top 3) Mean: 0.2484 CInt: 0.0000;
+========== FID Summary ==========
+---> [ground truth] Mean: 0.2358 CInterval: 0.0000
+---> [text2motion] Mean: 5.4670 CInterval: 0.0000
+========== Diversity Summary ==========
+---> [ground truth] Mean: 5.9806 CInterval: 0.0000
+---> [text2motion] Mean: 5.0118 CInterval: 0.0000
+========== Skating Ratio Summary ==========
+---> [text2motion] Mean: 0.1293 CInterval: 0.0000

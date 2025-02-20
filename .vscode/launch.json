@@ -5,6 +5,48 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python 调试程序: 包含参数的当前文件",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "/sata/public/yyqi/testMotionDiffuse/text2motion/checkpoints/t2m/interx_humanml3d_baseline_1gpu/opt.txt",
+                // "/sata/public/yyqi/testMotionDiffuse/text2motion/checkpoints/t2m/interx_baseline_1gpu/opt.txt",
+                "1"
+            ]
+        },
+        {
+            "name": "train",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--name",
+                "interx_humanml3d_baseline_1gpu",
+                "--batch_size",
+                "128",
+                "--times",
+                "25",
+                "--num_epochs",
+                "100",
+                "--dataset_name",
+                "t2m",
+                "--gpu_id",
+                "1",
+                "--is_continue"
+            ]
+        },
+        {
             "name": "visualization",
             "type": "debugpy",
             "request": "launch",
@@ -16,13 +58,16 @@
             },
             "args": [
                 // " --opt_path","'/media/michaela/DATA1/GitHub/MotionDiffuse/testMotionDiffuse/text2motion/checkpoints/t2m/t2m_motiondiffuse/opt.txt'",
-                "--text","'a person is jumping'",
-                "--motion_length","60",
-                "--result_path","'test_sample.gif'"
-                "--npy_path","'test_sample.npy'",
-                "--gpu_id","0"
-                
+                "--text",
+                "'a person is jumping'",
+                "--motion_length",
+                "60",
+                "--result_path",
+                "'test_sample.gif'""--npy_path",
+                "'test_sample.npy'",
+                "--gpu_id",
+                "0"
             ],
             "python": "/home/michaela/anaconda3/envs/motiondiffuse/bin/python"
-    ]
-}
+        ]
+    }

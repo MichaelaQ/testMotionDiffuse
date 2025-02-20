@@ -144,3 +144,66 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
 
     return (diff.dot(diff) + np.trace(sigma1) +
             np.trace(sigma2) - 2 * tr_covmean)
+    
+def calculate_skating_ratio_kit(motions):
+    thresh_height = 0.05 # 10
+    fps = 20.0
+    thresh_vel = 0.50 # 20 cm /s 
+    avg_window = 5 # frames
+
+    batch_size = motions.shape[0]
+    # 15 left, 20 right foot. XZ plane, y up
+    # motions [bs, 22, 3, max_len]
+    verts_feet = motions[:, [15, 20], :, :].detach().cpu().numpy()  # [bs, 2, 3, max_len]
+    verts_feet_plane_vel = np.linalg.norm(verts_feet[:, :, [0, 2], 1:] - verts_feet[:, :, [0, 2], :-1],  axis=2) * fps  # [bs, 2, max_len-1]
+    # [bs, 2, max_len-1]
+    vel_avg = uniform_filter1d(verts_feet_plane_vel, axis=-1, size=avg_window, mode='constant', origin=0)
+
+    verts_feet_height = verts_feet[:, :, 1, :]  # [bs, 2, max_len]
+    # If feet touch ground in agjecent frames
+    feet_contact = np.logical_and((verts_feet_height[:, :, :-1] < thresh_height), (verts_feet_height[:, :, 1:] < thresh_height))  # [bs, 2, max_len - 1]
+    # skate velocity
+    skate_vel = feet_contact * vel_avg
+
+    # it must both skating in the current frame
+    skating = np.logical_and(feet_contact, (verts_feet_plane_vel > thresh_vel))
+    # and also skate in the windows of frames
+    skating = np.logical_and(skating, (vel_avg > thresh_vel))
+
+    # Both feet slide
+    skating = np.logical_or(skating[:, 0, :], skating[:, 1, :]) # [bs, max_len -1]
+    skating_ratio = np.sum(skating, axis=1) / skating.shape[1]
+    
+    return skating_ratio, skate_vel
+
+
+def calculate_skating_ratio(motions):
+    thresh_height = 0.05 # 10
+    fps = 20.0
+    thresh_vel = 0.50 # 20 cm /s 
+    avg_window = 5 # frames
+
+    batch_size = motions.shape[0]
+    # 10 left, 11 right foot. XZ plane, y up
+    # motions [bs, 22, 3, max_len]
+    verts_feet = motions[:, [10, 11], :, :].detach().cpu().numpy()  # [bs, 2, 3, max_len]
+    verts_feet_plane_vel = np.linalg.norm(verts_feet[:, :, [0, 2], 1:] - verts_feet[:, :, [0, 2], :-1],  axis=2) * fps  # [bs, 2, max_len-1]
+    # [bs, 2, max_len-1]
+    vel_avg = uniform_filter1d(verts_feet_plane_vel, axis=-1, size=avg_window, mode='constant', origin=0)
+
+    verts_feet_height = verts_feet[:, :, 1, :]  # [bs, 2, max_len]
+    # If feet touch ground in agjecent frames
+    feet_contact = np.logical_and((verts_feet_height[:, :, :-1] < thresh_height), (verts_feet_height[:, :, 1:] < thresh_height))  # [bs, 2, max_len - 1]
+    # skate velocity
+    skate_vel = feet_contact * vel_avg
+
+    # it must both skating in the current frame
+    skating = np.logical_and(feet_contact, (verts_feet_plane_vel > thresh_vel))
+    # and also skate in the windows of frames
+    skating = np.logical_and(skating, (vel_avg > thresh_vel))
+
+    # Both feet slide
+    skating = np.logical_or(skating[:, 0, :], skating[:, 1, :]) # [bs, max_len -1]
+    skating_ratio = np.sum(skating, axis=1) / skating.shape[1]
+    
+    return skating_ratio, skate_vel

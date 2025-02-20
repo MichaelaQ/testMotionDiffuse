@@ -20,7 +20,7 @@ class TestOptions(BaseOptions):
         self.parser.add_argument('--motion_length', type=int, default=0, help='Number of framese for motion generation')
         self.parser.add_argument('--text_file', type=str, default="", help='Path of text description for motion generation')
         self.parser.add_argument('--which_epoch', type=str, default="latest", help='Checkpoint that will be used')
-        self.parser.add_argument('--result_path', type=str, default="./eval_results/", help='Path to save generation results')
+        self.parser.add_argument('--result_path', type=str, default="./text2motion/eval_results/", help='Path to save generation results')
         self.parser.add_argument('--num_results', type=int, default=40, help='Number of descriptions that will be used')
         self.parser.add_argument('--ext', type=str, default='default', help='Save file path extension')
 
